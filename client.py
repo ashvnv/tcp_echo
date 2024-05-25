@@ -5,6 +5,13 @@
 import socket
 import threading
 import timeit
+import string
+import random
+
+payload = "".join(random.choices(string.ascii_uppercase + string.digits, k = 1000))
+
+#print(payload.encode("utf-8"))
+
 
 #ECHO THE MESSAGE BACK TO THE SERVER
 def echo(socket):
@@ -16,30 +23,47 @@ def echo(socket):
 #THIS FUNCTION WILL CALCULATE THE RTT
 def rtt_calc(socket, msg_head):
 
+    #PYTHON FILE LOG
+    file = open(f"client_logs/{msg_head}.txt", "w") #CREATE FILE IF IT DOESNT EXIST
+    file.write(f"{msg_head} LOGS\r\n")
+    file.close()
+
+    file = open(f"client_logs/{msg_head}.txt", "a") #APPEND TO THE FILE
+
     rtt_max = 0 #MAXIMUM RTT
+
+    try:
         
-    #TOTAL PACKETS TO BE SENT TO SERVER
-    for i in range(100):
+        #TOTAL PACKETS TO BE SENT TO SERVER
+        for i in range(10000):
 
-        start_time = timeit.default_timer()
+            start_time = timeit.default_timer()
 
-        #msg_head: LOOP <i>\r\n
-        socket.sendall(f"{msg_head}: LOOP {i} \r\n".encode("utf-8"))
+            #msg_head: LOOP <i>\r\n
+            socket.sendall(f"{msg_head}: LOOP {i} {payload} \r\n".encode("utf-8"))
 
-        #WAIT FOR RECEIVING THE MESSAGE
-        socket.recv(1024).decode("utf-8")
+            #WAIT FOR RECEIVING THE MESSAGE
+            socket.recv(1024).decode("utf-8")
 
-        #CALCULATE THE ROUND-TRIP TIME
-        rtt = (timeit.default_timer() - start_time) * 1000 #IN MS
+            #CALCULATE THE ROUND-TRIP TIME
+            rtt = (timeit.default_timer() - start_time) * 1000 #IN MS
 
-        #ONLY PRINT THE MAXIMUM DELAY
-        if rtt > rtt_max:
-            rtt_max = rtt
-            print(f"{msg_head}: RTT MAX: {rtt_max}")
+            file.write(f"{msg_head} LOOP {i}: RTT MAX: {rtt_max} | RTT: {rtt}\r\n")
 
-        #time.sleep(1)  
+            #ONLY PRINT THE MAXIMUM DELAY
+            if rtt > rtt_max:
+                rtt_max = rtt
+                print(f"{msg_head} LOOP {i}: RTT MAX: {rtt_max}\r\n")
 
-    print(f"{msg_head}: EXECUTION COMPLETE")
+            #time.sleep(1)
+                
+    except Exception as e:
+        print(f"Error: {e}")
+        file.write(f"Error: {e} \r\n")
+
+    finally: file.close() #CLOSE THE FILE
+
+    print(f"{msg_head}: EXECUTION COMPLETE. MAX DELAY: {rtt_max}")
 
 #THIS FUNCTION WILL CREATE THREADS EACH TIME IT IS CALLED
 def client_thread(server_ip, server_port, msg_head):
@@ -62,7 +86,7 @@ def client_thread(server_ip, server_port, msg_head):
 #CALL THIS TO RUN THE CLIENT PROGRAM
 def run_client():
 
-    server_ip = "192.168.92.9"  # replace with the server's IP address
+    server_ip = "192.168.0.2"  # replace with the server's IP address
     server_port = 8080  # replace with the server's port number
 
     #NUMBER OF CLIENTS TO BE MADE
